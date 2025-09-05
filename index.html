@@ -73,7 +73,7 @@
             <div class="mt-2 p-2 bg-gray-900/50 rounded-lg flex items-center justify-between group">
                 <span id="user-code" class="text-indigo-300 font-mono text-sm break-all"></span>
                 <button id="copy-code-btn" class="ml-2 p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 D00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                 </button>
             </div>
              <button id="regen-code-btn" class="w-full mt-3 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg">
@@ -168,15 +168,24 @@
 
 
 <script type="module">
+    // =================================================================================
+    // Secure Messenger - A real-time chat application using Firebase
+    // =================================================================================
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, serverTimestamp, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- App State ---
+    // --- 1. App State ---
+    // Global variables to hold app state and Firebase service instances.
+    // ---------------------------------------------------------------------------------
     let app, db, auth, currentUser, activeChatFriendId = null, unsubscribeMessages = null;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let confirmCallback = null;
 
-    // --- DOM Elements ---
+    // --- 2. DOM Elements ---
+    // Caching references to frequently used DOM elements for performance.
+    // ---------------------------------------------------------------------------------
     const appLoading = document.getElementById('app-loading');
     const appContainer = document.getElementById('app-container');
     const userCodeEl = document.getElementById('user-code');
@@ -202,16 +211,17 @@
     const confirmModalText = document.getElementById('confirm-modal-text');
     const confirmBtn = document.getElementById('confirm-btn');
     const cancelConfirmBtn = document.getElementById('cancel-confirm-btn');
-    let confirmCallback = null;
 
-    // --- Helper Functions ---
+    // --- 3. Helper Functions ---
+    // Utility functions for common tasks like generating codes and showing UI elements.
+    // ---------------------------------------------------------------------------------
     const generateFriendCode = () => (Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10));
     const getChatId = (uid1, uid2) => [uid1, uid2].sort().join('_');
 
     function showToast(message) {
         toastMessage.textContent = message;
         toastNotification.classList.remove('hidden', 'toast-enter');
-        void toastNotification.offsetWidth; // Trigger reflow
+        void toastNotification.offsetWidth; // Trigger reflow for animation
         toastNotification.classList.add('toast-enter-active');
         setTimeout(() => {
             toastNotification.classList.add('hidden');
@@ -235,7 +245,9 @@
         showModal(confirmModal);
     }
 
-    // --- Firebase Initialization ---
+    // --- 4. Firebase Initialization ---
+    // Connects to Firebase services and handles user authentication.
+    // ---------------------------------------------------------------------------------
     async function main() {
         try {
             const firebaseConfig = JSON.parse(__firebase_config);
@@ -272,7 +284,9 @@
         });
     }
 
-    // --- User Setup ---
+    // --- 5. User Setup ---
+    // Creates a new user profile if one doesn't exist and listens for updates.
+    // ---------------------------------------------------------------------------------
     async function setupUser() {
         const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
         const userDoc = await getDoc(userRef);
@@ -307,7 +321,9 @@
         return newCode;
     }
 
-    // --- UI Rendering ---
+    // --- 6. UI Rendering ---
+    // Functions responsible for drawing and updating the UI based on app state.
+    // ---------------------------------------------------------------------------------
     async function renderFriendsList(friendIds) {
         friendsListEl.innerHTML = '';
         if (!friendIds || friendIds.length === 0) {
@@ -396,7 +412,9 @@
         }
     }
 
-    // --- Chat Logic ---
+    // --- 7. Chat Logic ---
+    // Handles selecting a chat and loading/sending messages in real-time.
+    // ---------------------------------------------------------------------------------
     function selectChat(friendId, friendCode) {
         if (activeChatFriendId === friendId) return;
 
@@ -427,7 +445,9 @@
         getDoc(userRef).then(doc => renderFriendsList(doc.data().friends));
     }
 
-    // --- Event Handlers ---
+    // --- 8. Event Handlers ---
+    // Listeners for user interactions like button clicks and form submissions.
+    // ---------------------------------------------------------------------------------
     addFriendBtn.addEventListener('click', () => showModal(addFriendModal));
     cancelAddFriendBtn.addEventListener('click', () => hideModal(addFriendModal));
 
@@ -524,7 +544,9 @@
         hideModal(confirmModal);
     });
 
-    // --- Start App ---
+    // --- 9. Start App ---
+    // Initial function call to kick things off.
+    // ---------------------------------------------------------------------------------
     main();
 
 </script>
