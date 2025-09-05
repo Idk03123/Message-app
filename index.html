@@ -1,555 +1,374 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Messenger</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-            width: 6px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-            background-color: #4b5563;
-            border-radius: 20px;
-        }
-        .chat-bubble-sent {
-            background-color: #4f46e5;
-            color: white;
-            border-bottom-right-radius: 4px;
-        }
-        .chat-bubble-received {
-            background-color: #374151;
-            color: #d1d5db;
-            border-bottom-left-radius: 4px;
-        }
-        .modal-enter {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-        .modal-enter-active {
-            opacity: 1;
-            transform: scale(1);
-            transition: opacity 200ms ease, transform 200ms ease;
-        }
-        .toast-enter {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        .toast-enter-active {
-            opacity: 1;
-            transform: translateY(0);
-            transition: opacity 300ms ease, transform 300ms ease;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CodeChat — 16-digit code messaging (Demo)</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa6bb;--accent:#3b82f6;--accent-2:#06b6d4}
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,#071023 0%, #07182b 100%);color:#e6eef8;min-height:100vh;padding:28px}
+    .app{max-width:980px;margin:0 auto}
+    header{display:flex;gap:12px;align-items:center}
+    h1{margin:0;font-size:20px}
+    .card{background:rgba(255,255,255,0.03);padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    .flex{display:flex;gap:12px}
+    .col{display:flex;flex-direction:column;gap:8px}
+    .muted{color:var(--muted);font-size:13px}
+    .code-pill{font-family:monospace;background:linear-gradient(90deg,#05102b,#082036);padding:10px;border-radius:8px;letter-spacing:2px}
+    button{background:var(--accent);border:none;padding:8px 10px;border-radius:8px;color:white;cursor:pointer}
+    input,textarea,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    .sidebar{width:280px}
+    .main{flex:1}
+    .friends-list{display:flex;flex-direction:column;gap:8px;max-height:480px;overflow:auto}
+    .friend{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+    .messages{height:420px;overflow:auto;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border-radius:8px}
+    .msg{padding:8px;border-radius:8px;max-width:70%;margin-bottom:8px}
+    .mine{background:rgba(56,189,248,0.12);align-self:flex-end}
+    .theirs{background:rgba(255,255,255,0.03);align-self:flex-start}
+    .small{font-size:12px;color:var(--muted)}
+    .danger{background:#ef4444}
+    .note{font-size:13px;color:var(--muted);margin-top:6px}
+    .row{display:flex;gap:8px;align-items:center}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+  </style>
 </head>
-<body class="bg-gray-900 text-gray-200 flex items-center justify-center h-screen antialiased">
+<body>
+  <div class="app">
+    <header class="card">
+      <div style="flex:1">
+        <h1>CodeChat — messaging by 16-digit code</h1>
+        <div class="muted">Runs in your browser. Optional: connect Firebase for a real backend (instructions included).</div>
+      </div>
+      <div class="col" style="align-items:flex-end">
+        <div class="muted">Your 16-digit code</div>
+        <div class="code-pill" id="myCode">...</div>
+      </div>
+    </header>
 
-<div id="app-loading" class="text-center flex flex-col items-center">
-    <svg class="animate-spin h-10 w-10 text-indigo-400 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-    <h1 class="text-2xl font-bold text-indigo-400">Secure Messenger</h1>
-    <p class="mt-1 text-gray-400">Initializing your secure session...</p>
-</div>
+    <div style="height:14px"></div>
 
-<div id="app-container" class="hidden w-full h-full max-w-7xl mx-auto flex flex-col md:flex-row bg-gray-800 shadow-2xl rounded-xl overflow-hidden">
-    
-    <!-- Sidebar -->
-    <div class="w-full md:w-1/3 lg:w-1/4 bg-gray-800 border-b md:border-b-0 md:border-r border-gray-700/50 flex flex-col">
-        <!-- User Profile Section -->
-        <div class="p-4 border-b border-gray-700/50">
-            <h2 class="text-lg font-semibold text-white">Your Friend Code</h2>
-            <div class="mt-2 p-2 bg-gray-900/50 rounded-lg flex items-center justify-between group">
-                <span id="user-code" class="text-indigo-300 font-mono text-sm break-all"></span>
-                <button id="copy-code-btn" class="ml-2 p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md transition-all duration-200 opacity-0 group-hover:opacity-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 D00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                </button>
+    <div class="flex">
+      <aside class="sidebar card col">
+        <div>
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div>
+              <div class="muted">Account</div>
+              <div id="userId" class="small muted">ID: ...</div>
             </div>
-             <button id="regen-code-btn" class="w-full mt-3 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg">
-                Generate New Code
-            </button>
-            <p id="regen-timer" class="text-xs text-center mt-2 text-gray-500"></p>
-        </div>
-
-        <!-- Friends List -->
-        <div class="flex-grow p-2 overflow-y-auto scrollbar-thin">
-            <h2 class="text-lg font-semibold mb-2 px-2 text-white">Friends</h2>
-            <div id="friends-list" class="space-y-1">
-                <!-- Friends will be dynamically inserted here -->
+            <div style="text-align:right">
+              <button id="changeCodeBtn">Change code</button>
+              <div class="note" id="codeCooldownNote"></div>
             </div>
+          </div>
         </div>
 
-        <!-- Add Friend Button -->
-        <div class="p-4 border-t border-gray-700/50">
-            <button id="add-friend-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-                <span>Add Friend</span>
-            </button>
+        <hr style="opacity:0.06;margin:8px 0">
+
+        <div>
+          <div class="muted">Add friend by code</div>
+          <div class="row"><input id="addCodeInput" placeholder="1234 5678 9012 3456"><button id="addFriendBtn">Add</button></div>
+          <div id="addResult" class="small muted"></div>
         </div>
+
+        <div>
+          <div style="margin-top:8px" class="muted">Friends</div>
+          <div class="friends-list" id="friendsList"></div>
+        </div>
+
+        <hr style="opacity:0.06;margin:8px 0">
+        <div class="muted">Mode</div>
+        <div class="small muted">This app auto-detects if you put Firebase config into the bottom of this file. If not, it runs in Local Demo Mode (messages stored in your browser).</div>
+
+        <div style="margin-top:8px" class="small muted">Local demo limitations: you can only chat with friends whose data is also stored in the same browser (or you import their exported file). To have a real multi-user app, set up Firebase and paste the config below (instructions in footer).
+        </div>
+
+        <div style="margin-top:6px" class="row"><button id="exportBtn">Export my account</button><button id="importBtn">Import</button></div>
+        <input id="importInput" type="file" accept="application/json" style="display:none">
+      </aside>
+
+      <main class="main col card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="muted">Chat</div>
+            <div id="chatWith" class="muted small">No friend selected</div>
+          </div>
+          <div>
+            <button id="clearBtn" class="danger">Clear local data</button>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="messages col" id="messages"></div>
+
+        <div style="height:8px"></div>
+        <div class="row">
+          <input id="messageInput" placeholder="Type a message" style="flex:1">
+          <button id="sendBtn">Send</button>
+        </div>
+        <div id="statusNote" class="note"></div>
+      </main>
     </div>
 
-    <!-- Chat Area -->
-    <div id="chat-area" class="w-full md:w-2/3 lg:w-3/4 flex flex-col bg-gray-700">
-        <!-- Welcome Screen -->
-        <div id="welcome-screen" class="flex-grow flex flex-col items-center justify-center text-center p-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-            <h2 class="mt-4 text-2xl font-bold text-white">Welcome to Secure Messenger</h2>
-            <p class="mt-2 text-gray-400 max-w-md">Select a friend from the list on the left to start a conversation. Your chats are secure and private.</p>
-        </div>
+    <footer class="card">
+      <div class="small muted">Deploy: create a GitHub repo, add this file as <code>index.html</code>, then enable GitHub Pages on the repository (Settings → Pages → choose branch main / root). If you want real multi-user messaging, follow the Firebase instructions in the comments at the bottom of this file and paste your Firebase config into the <code>FIREBASE_CONFIG</code> placeholder in this HTML.</div>
+    </footer>
+  </div>
 
-        <!-- Active Chat Window -->
-        <div id="chat-window" class="hidden flex-grow flex flex-col">
-            <!-- Chat Header -->
-            <div class="p-4 border-b border-gray-600/50 bg-gray-800 flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white text-lg" id="chat-avatar"></div>
-                <h2 id="chat-header" class="text-xl font-bold text-white"></h2>
-            </div>
-            <!-- Messages -->
-            <div id="messages-container" class="flex-grow p-4 overflow-y-auto scrollbar-thin flex flex-col-reverse">
-                <div id="messages" class="space-y-4"></div>
-            </div>
-            <!-- Message Input -->
-            <div class="p-4 border-t border-gray-600/50 bg-gray-800">
-                <form id="message-form" class="flex items-center space-x-3">
-                    <input type="text" id="message-input" class="flex-grow bg-gray-900 text-gray-200 rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200" placeholder="Type a message..." autocomplete="off">
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-full transition-all duration-200 shadow-md hover:shadow-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
+  <!-- Firebase SDK is loaded conditionally below in JS if FIREBASE_CONFIG is filled -->
 
-<!-- Add Friend Modal -->
-<div id="add-friend-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 modal-enter">
-    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-4 text-white">Add a Friend</h2>
-        <form id="add-friend-form">
-            <label for="friend-code-input" class="block text-sm font-medium text-gray-400">Enter their 16-digit code:</label>
-            <input type="text" id="friend-code-input" class="w-full mt-1 bg-gray-900 text-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" required>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="cancel-add-friend" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-all duration-200">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-200 font-semibold">Add</button>
-            </div>
-        </form>
-    </div>
-</div>
+  <script>
+  // ------------------- App logic -------------------
+  const MS_PER_DAY = 24*60*60*1000;
+  const CODE_COOLDOWN_DAYS = 3;
 
-<!-- Custom Alert/Toast -->
-<div id="toast-notification" class="hidden fixed bottom-5 right-5 bg-gray-700 text-white py-3 px-5 rounded-lg shadow-lg z-50 toast-enter">
-    <p id="toast-message"></p>
-</div>
+  // LocalStorage keys
+  const LS_KEY = 'codechat_account_v1';
 
-<!-- Custom Confirm Modal -->
-<div id="confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 modal-enter">
-    <div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-4">Are you sure?</h2>
-        <p id="confirm-modal-text" class="text-gray-400 mb-6"></p>
-        <div class="flex justify-end space-x-3">
-            <button id="cancel-confirm-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-all duration-200">Cancel</button>
-            <button id="confirm-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200 font-semibold">Confirm</button>
-        </div>
-    </div>
-</div>
+  // Replace the object below with your Firebase config (from Firebase console) to enable real backend.
+  // Example (DO NOT COMMIT your real keys to a public repo):
+  // const FIREBASE_CONFIG = {apiKey: "...", authDomain: "...", databaseURL: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..."};
+  const FIREBASE_CONFIG = null; // <-- paste your config object here to enable Firebase mode
 
+  let firebaseEnabled = false;
+  let db = null;
 
-<script type="module">
-    // =================================================================================
-    // Secure Messenger - A real-time chat application using Firebase
-    // =================================================================================
+  function rnd16Digits(){
+    let s='';
+    for(let i=0;i<16;i++) s += Math.floor(Math.random()*10);
+    return s.match(/\d{4}/g).join(' ');
+  }
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, serverTimestamp, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  function now(){return Date.now();}
 
-    // --- 1. App State ---
-    // Global variables to hold app state and Firebase service instances.
-    // ---------------------------------------------------------------------------------
-    let app, db, auth, currentUser, activeChatFriendId = null, unsubscribeMessages = null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    let confirmCallback = null;
+  function loadLocalAccount(){
+    let raw = localStorage.getItem(LS_KEY);
+    if(raw) return JSON.parse(raw);
+    const acc = {
+      userId: 'u-' + Math.random().toString(36).slice(2,10),
+      code: rnd16Digits(),
+      codeLastChanged: now(),
+      friends: [], // {userId, code, label}
+      messages: {} // friendUserId -> [{from:'me'|'them',text,ts}]
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(acc));
+    return acc;
+  }
 
-    // --- 2. DOM Elements ---
-    // Caching references to frequently used DOM elements for performance.
-    // ---------------------------------------------------------------------------------
-    const appLoading = document.getElementById('app-loading');
-    const appContainer = document.getElementById('app-container');
-    const userCodeEl = document.getElementById('user-code');
-    const friendsListEl = document.getElementById('friends-list');
-    const chatHeaderEl = document.getElementById('chat-header');
-    const chatAvatarEl = document.getElementById('chat-avatar');
-    const messagesEl = document.getElementById('messages');
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
-    const addFriendBtn = document.getElementById('add-friend-btn');
-    const addFriendModal = document.getElementById('add-friend-modal');
-    const addFriendForm = document.getElementById('add-friend-form');
-    const cancelAddFriendBtn = document.getElementById('cancel-add-friend');
-    const friendCodeInput = document.getElementById('friend-code-input');
-    const copyCodeBtn = document.getElementById('copy-code-btn');
-    const regenCodeBtn = document.getElementById('regen-code-btn');
-    const regenTimerEl = document.getElementById('regen-timer');
-    const welcomeScreen = document.getElementById('welcome-screen');
-    const chatWindow = document.getElementById('chat-window');
-    const toastNotification = document.getElementById('toast-notification');
-    const toastMessage = document.getElementById('toast-message');
-    const confirmModal = document.getElementById('confirm-modal');
-    const confirmModalText = document.getElementById('confirm-modal-text');
-    const confirmBtn = document.getElementById('confirm-btn');
-    const cancelConfirmBtn = document.getElementById('cancel-confirm-btn');
+  function saveLocalAccount(acc){ localStorage.setItem(LS_KEY, JSON.stringify(acc)); }
 
-    // --- 3. Helper Functions ---
-    // Utility functions for common tasks like generating codes and showing UI elements.
-    // ---------------------------------------------------------------------------------
-    const generateFriendCode = () => (Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10));
-    const getChatId = (uid1, uid2) => [uid1, uid2].sort().join('_');
+  let account = loadLocalAccount();
+  let currentFriend = null;
 
-    function showToast(message) {
-        toastMessage.textContent = message;
-        toastNotification.classList.remove('hidden', 'toast-enter');
-        void toastNotification.offsetWidth; // Trigger reflow for animation
-        toastNotification.classList.add('toast-enter-active');
-        setTimeout(() => {
-            toastNotification.classList.add('hidden');
-             toastNotification.classList.remove('toast-enter-active');
-        }, 3000);
+  // UI elements
+  const myCodeEl = document.getElementById('myCode');
+  const userIdEl = document.getElementById('userId');
+  const friendsListEl = document.getElementById('friendsList');
+  const messagesEl = document.getElementById('messages');
+  const chatWithEl = document.getElementById('chatWith');
+  const codeCooldownNote = document.getElementById('codeCooldownNote');
+  const statusNote = document.getElementById('statusNote');
+
+  function renderAccount(){
+    myCodeEl.textContent = account.code;
+    userIdEl.textContent = 'ID: ' + account.userId;
+    const daysLeft = CODE_COOLDOWN_DAYS - Math.floor((now() - account.codeLastChanged)/MS_PER_DAY);
+    if(daysLeft>0){
+      codeCooldownNote.textContent = `Can change in ${daysLeft} day(s)`;
+      document.getElementById('changeCodeBtn').disabled = true;
+    } else {
+      codeCooldownNote.textContent = '';
+      document.getElementById('changeCodeBtn').disabled = false;
     }
 
-    function showModal(modalElement) {
-        modalElement.classList.remove('hidden');
-        setTimeout(() => modalElement.classList.add('modal-enter-active'), 10);
+    // friends
+    friendsListEl.innerHTML = '';
+    account.friends.forEach(f => {
+      const el = document.createElement('div'); el.className='friend';
+      const left = document.createElement('div');
+      left.innerHTML = `<div style="font-weight:600">${f.label||f.userId}</div><div class="small muted">${f.code}</div>`;
+      const right = document.createElement('div');
+      const btn = document.createElement('button'); btn.textContent='Chat'; btn.onclick = ()=>selectFriend(f.userId);
+      const rm = document.createElement('button'); rm.textContent='Remove'; rm.style.background='transparent'; rm.style.border='1px solid rgba(255,255,255,0.04)'; rm.style.color='var(--muted)'; rm.onclick=()=>removeFriend(f.userId);
+      right.appendChild(btn); right.appendChild(rm);
+      el.appendChild(left); el.appendChild(right);
+      friendsListEl.appendChild(el);
+    });
+
+    renderMessages();
+  }
+
+  function selectFriend(id){
+    currentFriend = account.friends.find(f=>f.userId===id) || null;
+    chatWithEl.textContent = currentFriend ? `Chatting with ${currentFriend.label||currentFriend.userId}` : 'No friend selected';
+    renderMessages();
+  }
+
+  function renderMessages(){
+    messagesEl.innerHTML = '';
+    if(!currentFriend){ messagesEl.innerHTML = '<div class="muted">Select a friend to start chatting.</div>'; return; }
+    const msgs = account.messages[currentFriend.userId] || [];
+    msgs.forEach(m=>{
+      const el = document.createElement('div'); el.className='msg ' + (m.from==='me'?'mine':'theirs'); el.textContent = m.text;
+      const time = document.createElement('div'); time.className='small'; time.textContent = new Date(m.ts).toLocaleString(); el.appendChild(time);
+      messagesEl.appendChild(el);
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeFriend(id){ account.friends = account.friends.filter(f=>f.userId!==id); delete account.messages[id]; saveLocalAccount(account); renderAccount(); }
+
+  document.getElementById('changeCodeBtn').addEventListener('click', ()=>{
+    const confirmed = confirm('Change your 16-digit code? You can only change once every 3 days.');
+    if(!confirmed) return;
+    account.code = rnd16Digits(); account.codeLastChanged = now(); saveLocalAccount(account);
+    if(firebaseEnabled){ // update backend user record
+      db.ref('users/'+account.userId).set({code:account.code,codeLastChanged:account.codeLastChanged, userId:account.userId});
+    }
+    renderAccount();
+    alert('Code changed to: ' + account.code);
+  });
+
+  document.getElementById('addFriendBtn').addEventListener('click', ()=>{
+    const raw = document.getElementById('addCodeInput').value.trim().replace(/\s+/g,' ');
+    if(!raw){ document.getElementById('addResult').textContent='Enter a code.'; return; }
+    addFriendByCode(raw).then(r=>{ document.getElementById('addResult').textContent = r; renderAccount(); });
+  });
+
+  async function addFriendByCode(code){
+    if(firebaseEnabled){
+      // query users by code
+      const snapshot = await db.ref('users').orderByChild('code').equalTo(code).once('value');
+      const val = snapshot.val();
+      if(!val) return 'No user found with that code.';
+      const uid = Object.keys(val)[0];
+      if(uid===account.userId) return 'You cannot add yourself.';
+      if(account.friends.some(f=>f.userId===uid)) return 'Already friends.';
+      const friend = {userId: uid, code: code, label: val[uid].displayName || uid};
+      account.friends.push(friend); saveLocalAccount(account);
+      return 'Friend added (via Firebase backend).';
+    } else {
+      // local demo mode: importing another account's exported JSON is necessary
+      // attempt to find friend in localStorage (if both users used same browser)
+      const all = JSON.parse(localStorage.getItem(LS_KEY+'_registry') || '[]');
+      const found = all.find(a=>a.code===code);
+      if(found){
+        if(found.userId===account.userId) return 'You cannot add yourself.';
+        if(account.friends.some(f=>f.userId===found.userId)) return 'Already friends.';
+        account.friends.push({userId:found.userId, code:found.code, label:found.userId}); saveLocalAccount(account);
+        return 'Friend added (local demo).';
+      }
+      return 'Local mode: no user with that code found. To add someone, have them export their account and import it into your browser (Export / Import buttons).';
+    }
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const data = JSON.stringify({userId:account.userId, code:account.code, codeLastChanged:account.codeLastChanged},null,2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download = 'codechat_user_'+account.userId+'.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('importBtn').addEventListener('click', ()=>{ document.getElementById('importInput').click(); });
+  document.getElementById('importInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{ const data = JSON.parse(reader.result); // expected {userId,code,...}
+        let reg = JSON.parse(localStorage.getItem(LS_KEY+'_registry') || '[]');
+        if(!reg.some(x=>x.userId===data.userId)) reg.push({userId:data.userId,code:data.code});
+        localStorage.setItem(LS_KEY+'_registry', JSON.stringify(reg));
+        alert('Imported account into local registry. Now you can add friend using their code (Local Demo Mode).');
+      }catch(err){ alert('Invalid file'); }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('sendBtn').addEventListener('click', sendMessage);
+  document.getElementById('messageInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
+
+  function sendMessage(){
+    const text = document.getElementById('messageInput').value.trim(); if(!text || !currentFriend) return;
+    const msg = {from:'me', text, ts: now()};
+    account.messages[currentFriend.userId] = account.messages[currentFriend.userId] || [];
+    account.messages[currentFriend.userId].push(msg);
+    saveLocalAccount(account);
+
+    // push to firebase if enabled
+    if(firebaseEnabled){
+      const msgRecord = {from:account.userId, text, ts: msg.ts};
+      const path = `messages/${[account.userId,currentFriend.userId].sort().join('_')}`; // shared chat path
+      db.ref(path).push(msgRecord);
     }
 
-    function hideModal(modalElement) {
-        modalElement.classList.remove('modal-enter-active');
-        setTimeout(() => modalElement.classList.add('hidden'), 200);
-    }
-    
-    function showConfirm(message, onConfirm) {
-        confirmModalText.textContent = message;
-        confirmCallback = onConfirm;
-        showModal(confirmModal);
-    }
+    document.getElementById('messageInput').value=''; renderMessages();
+  }
 
-    // --- 4. Firebase Initialization ---
-    // Connects to Firebase services and handles user authentication.
-    // ---------------------------------------------------------------------------------
-    async function main() {
-        try {
-            const firebaseConfig = JSON.parse(__firebase_config);
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        } catch(e) {
-            appLoading.innerHTML = `<h1 class="text-3xl font-bold text-red-500">Configuration Error</h1><p class="mt-2 text-gray-400">Could not connect to the backend. Please check the setup.</p>`;
-            console.error("Firebase initialization failed:", e);
-            return;
-        }
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    if(confirm('Clear ALL local data for this app? This will remove friends, messages, and your account.')){
+      localStorage.removeItem(LS_KEY); location.reload();
+    }
+  });
 
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
+  function initFirebaseAndStart(config){
+    // load firebase scripts dynamically
+    const s1 = document.createElement('script'); s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    const s2 = document.createElement('script'); s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+    s1.onload = ()=>{ s2.onload = ()=>{
+      try{
+        firebase.initializeApp(config);
+        db = firebase.database(); firebaseEnabled = true;
+        // ensure user exists
+        db.ref('users/'+account.userId).set({code:account.code,codeLastChanged:account.codeLastChanged, userId:account.userId});
+
+        // listen for new messages on any chat involving me
+        const userChatsRef = db.ref('messages');
+        userChatsRef.on('value', snapshot=>{
+          const all = snapshot.val() || {};
+          // iterate all chat rooms and pull messages relevant to my friends
+          for(const room in all){
+            const parts = room.split('_');
+            if(parts.includes(account.userId)){
+              const other = parts[0]===account.userId?parts[1]:parts[0];
+              const msgs = [];
+              for(const k in all[room]) msgs.push(all[room][k]);
+              // add to local messages
+              account.messages[other] = msgs.map(m=>({from: m.from===account.userId? 'me':'them', text:m.text, ts:m.ts}));
             }
-        } catch (error) {
-            console.error("Authentication failed:", error);
-            appLoading.innerHTML = `<h1 class="text-3xl font-bold text-red-500">Authentication Error</h1><p class="mt-2 text-gray-400">Could not sign you in.</p>`;
-            return;
-        }
-
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                await setupUser();
-                appLoading.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-            } else {
-                 appLoading.innerHTML = `<h1 class="text-3xl font-bold text-red-500">Authentication Error</h1><p class="mt-2 text-gray-400">User session lost. Please refresh.</p>`;
-            }
-        });
-    }
-
-    // --- 5. User Setup ---
-    // Creates a new user profile if one doesn't exist and listens for updates.
-    // ---------------------------------------------------------------------------------
-    async function setupUser() {
-        const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
-        const userDoc = await getDoc(userRef);
-
-        if (!userDoc.exists()) {
-            const newFriendCode = await createUniqueFriendCode();
-            await setDoc(userRef, {
-                friendCode: newFriendCode,
-                friends: [],
-                codeLastChanged: serverTimestamp()
-            });
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', newFriendCode), { userId: currentUser.uid });
-        }
-        
-        onSnapshot(userRef, (doc) => {
-            const userData = doc.data();
-            if(userData) {
-                userCodeEl.textContent = userData.friendCode;
-                updateRegenButton(userData.codeLastChanged);
-                renderFriendsList(userData.friends);
-            }
-        });
-    }
-
-    async function createUniqueFriendCode() {
-        let newCode = generateFriendCode();
-        let codeDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', newCode));
-        while (codeDoc.exists()) {
-            newCode = generateFriendCode();
-            codeDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', newCode));
-        }
-        return newCode;
-    }
-
-    // --- 6. UI Rendering ---
-    // Functions responsible for drawing and updating the UI based on app state.
-    // ---------------------------------------------------------------------------------
-    async function renderFriendsList(friendIds) {
-        friendsListEl.innerHTML = '';
-        if (!friendIds || friendIds.length === 0) {
-            friendsListEl.innerHTML = '<p class="text-gray-500 text-sm text-center p-4">No friends yet. Add one to start chatting!</p>';
-            return;
-        }
-        for (const friendId of friendIds) {
-            const friendDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', friendId));
-            if (friendDoc.exists()) {
-                const friendData = friendDoc.data();
-                const friendEl = document.createElement('div');
-                friendEl.className = 'p-3 mx-2 rounded-lg cursor-pointer hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3';
-                friendEl.dataset.friendId = friendId;
-                
-                const avatar = document.createElement('div');
-                avatar.className = 'w-10 h-10 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center font-bold text-white';
-                avatar.textContent = friendData.friendCode.substring(0, 2).toUpperCase();
-                
-                const info = document.createElement('div');
-                info.className = 'overflow-hidden';
-                const codeEl = document.createElement('p');
-                codeEl.className = 'font-semibold text-white truncate';
-                codeEl.textContent = friendData.friendCode;
-                const statusEl = document.createElement('p');
-                statusEl.className = 'text-xs text-gray-400';
-                statusEl.textContent = 'Click to chat';
-
-                info.appendChild(codeEl);
-                info.appendChild(statusEl);
-                friendEl.appendChild(avatar);
-                friendEl.appendChild(info);
-                
-                friendEl.onclick = () => selectChat(friendId, friendData.friendCode);
-
-                if (friendId === activeChatFriendId) {
-                    friendEl.classList.add('bg-indigo-600', 'hover:bg-indigo-600');
-                    statusEl.textContent = 'Active chat';
-                }
-                
-                friendsListEl.appendChild(friendEl);
-            }
-        }
-    }
-
-    function renderMessage(message) {
-        const isSent = message.senderId === currentUser.uid;
-        const bubble = document.createElement('div');
-        bubble.className = `max-w-xs md:max-w-md p-3 rounded-2xl ${isSent ? 'chat-bubble-sent self-end' : 'chat-bubble-received self-start'}`;
-        bubble.textContent = message.text;
-        messagesEl.prepend(bubble);
-    }
-    
-    function updateRegenButton(timestamp) {
-        if (!timestamp) {
-            regenCodeBtn.disabled = false;
-            regenTimerEl.textContent = "Ready to generate a new code.";
-            return;
-        }
-        
-        const lastChangedDate = timestamp.toDate();
-        const threeDaysInMillis = 3 * 24 * 60 * 60 * 1000;
-        const nextAvailableDate = new Date(lastChangedDate.getTime() + threeDaysInMillis);
-        const now = new Date();
-
-        if (now >= nextAvailableDate) {
-            regenCodeBtn.disabled = false;
-            regenTimerEl.textContent = "Ready to generate a new code.";
-        } else {
-            regenCodeBtn.disabled = true;
-            const updateTimer = () => {
-                const remaining = nextAvailableDate - new Date();
-                if (remaining <= 0) {
-                    regenCodeBtn.disabled = false;
-                    regenTimerEl.textContent = "Ready to generate a new code.";
-                    if(window.timerInterval) clearInterval(window.timerInterval);
-                    return;
-                }
-                const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((remaining / (1000 * 60 * 60)) % 24);
-                const minutes = Math.floor((remaining / 1000 / 60) % 60);
-                regenTimerEl.textContent = `Next in: ${days}d ${hours}h ${minutes}m`;
-            };
-            if(window.timerInterval) clearInterval(window.timerInterval);
-            window.timerInterval = setInterval(updateTimer, 1000 * 60);
-            updateTimer();
-        }
-    }
-
-    // --- 7. Chat Logic ---
-    // Handles selecting a chat and loading/sending messages in real-time.
-    // ---------------------------------------------------------------------------------
-    function selectChat(friendId, friendCode) {
-        if (activeChatFriendId === friendId) return;
-
-        activeChatFriendId = friendId;
-        chatHeaderEl.textContent = friendCode;
-        chatAvatarEl.textContent = friendCode.substring(0, 2).toUpperCase();
-        messagesEl.innerHTML = '';
-        
-        welcomeScreen.classList.add('hidden');
-        chatWindow.classList.remove('hidden');
-        chatWindow.classList.add('flex');
-        
-        if (unsubscribeMessages) unsubscribeMessages();
-
-        const chatId = getChatId(currentUser.uid, friendId);
-        const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', chatId, 'messages');
-        const q = query(messagesRef, orderBy('timestamp', 'desc'));
-
-        unsubscribeMessages = onSnapshot(q, (snapshot) => {
-            snapshot.docChanges().forEach(change => {
-                if (change.type === 'added') {
-                    renderMessage(change.doc.data());
-                }
-            });
+          }
+          saveLocalAccount(account);
+          renderAccount();
         });
 
-        const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
-        getDoc(userRef).then(doc => renderFriendsList(doc.data().friends));
-    }
+        statusNote.textContent = 'Connected to Firebase backend. Real multi-user chat enabled.';
+      }catch(e){ console.error(e); statusNote.textContent = 'Firebase init failed: '+e.message; }
+    }; document.head.appendChild(s2); }; document.head.appendChild(s1);
+  }
 
-    // --- 8. Event Handlers ---
-    // Listeners for user interactions like button clicks and form submissions.
-    // ---------------------------------------------------------------------------------
-    addFriendBtn.addEventListener('click', () => showModal(addFriendModal));
-    cancelAddFriendBtn.addEventListener('click', () => hideModal(addFriendModal));
+  // Start
+  renderAccount();
+  if(FIREBASE_CONFIG){
+    try{ initFirebaseAndStart(FIREBASE_CONFIG); }
+    catch(e){ console.error('firebase init error',e); }
+  } else {
+    statusNote.textContent = 'Running in Local Demo Mode (no Firebase config provided). To enable real backend, paste your Firebase config into FIREBASE_CONFIG variable in the HTML.';
+  }
 
-    addFriendForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const friendCode = friendCodeInput.value.trim();
-        if (friendCode.length !== 16) {
-            showToast("Friend code must be 16 characters long.");
-            return;
-        }
+  // auto-select first friend if exists
+  if(account.friends.length) selectFriend(account.friends[0].userId);
+  </script>
 
-        const ownDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid));
-        if (ownDoc.data().friendCode === friendCode) {
-            showToast("You can't add yourself as a friend.");
-            return;
-        }
-        
-        const friendCodeRef = doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', friendCode);
-        const friendCodeDoc = await getDoc(friendCodeRef);
+  <!--
+    FIREBASE SETUP INSTRUCTIONS (paste and replace FIREBASE_CONFIG variable above with your config object):
 
-        if (!friendCodeDoc.exists()) {
-            showToast("Friend code not found.");
-            return;
-        }
-        const friendId = friendCodeDoc.data().userId;
+    1) Go to https://console.firebase.google.com and create a new project.
+    2) In the project, go to Realtime Database -> Create database -> Start in test mode (for development).
+    3) Copy your project's config object from Project settings -> General -> Your apps -> Add web app. It'll look like:
+       { apiKey: "...", authDomain: "...", databaseURL: "https://<project>.firebaseio.com", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." }
+    4) Paste that object into FIREBASE_CONFIG in this HTML file (replace the null).
+    5) Deploy this index.html to GitHub Pages or host it somewhere. The app will then use Firebase Realtime Database to store user records and messages.
 
-        const currentUserRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
-        const friendUserRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', friendId);
-        
-        const currentUserData = (await getDoc(currentUserRef)).data();
-        const friendUserData = (await getDoc(friendUserRef)).data();
-
-        if (currentUserData.friends.includes(friendId)) {
-            showToast("You are already friends.");
-            return;
-        }
-
-        await updateDoc(currentUserRef, { friends: [...currentUserData.friends, friendId] });
-        await updateDoc(friendUserRef, { friends: [...friendUserData.friends, currentUser.uid] });
-
-        showToast("Friend added successfully!");
-        friendCodeInput.value = '';
-        hideModal(addFriendModal);
-    });
-
-    messageForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const text = messageInput.value.trim();
-        if (!text || !activeChatFriendId) return;
-
-        const chatId = getChatId(currentUser.uid, activeChatFriendId);
-        const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'chats', chatId, 'messages');
-        
-        await addDoc(messagesRef, {
-            text: text,
-            senderId: currentUser.uid,
-            timestamp: serverTimestamp()
-        });
-
-        messageInput.value = '';
-        messagesEl.parentElement.scrollTop = 0;
-    });
-
-    copyCodeBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(userCodeEl.textContent).then(() => {
-            showToast("Copied to clipboard!");
-        });
-    });
-
-    regenCodeBtn.addEventListener('click', () => {
-        showConfirm("Your old code will no longer work for adding new friends.", async () => {
-            const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
-            const userDoc = await getDoc(userRef);
-            const oldCode = userDoc.data().friendCode;
-            const newCode = await createUniqueFriendCode();
-            
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', oldCode));
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'friendCodes', newCode), { userId: currentUser.uid });
-            await updateDoc(userRef, {
-                friendCode: newCode,
-                codeLastChanged: serverTimestamp()
-            });
-            
-            showToast("Your friend code has been updated.");
-        });
-    });
-    
-    confirmBtn.addEventListener('click', () => {
-        if (confirmCallback) confirmCallback();
-        hideModal(confirmModal);
-    });
-
-    cancelConfirmBtn.addEventListener('click', () => {
-        hideModal(confirmModal);
-    });
-
-    // --- 9. Start App ---
-    // Initial function call to kick things off.
-    // ---------------------------------------------------------------------------------
-    main();
-
-</script>
+    SECURITY NOTE: Do NOT leave your Firebase Realtime Database in test mode for production. Configure database rules and authentication before releasing publicly.
+  -->
 </body>
 </html>
-
